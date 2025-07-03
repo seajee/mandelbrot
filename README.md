@@ -17,6 +17,7 @@ Currently the keybinds are the following:
 | Key               | Action              |
 | ----------------- | ------------------- |
 | R                 | Render png image    |
+| B                 | Toggle debug info   |
 | Mouse left click  | Zoom in             |
 | Mouse right click | Zoom out            |
 | Mouse wheel up    | Zoom in             |

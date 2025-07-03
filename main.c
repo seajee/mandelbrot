@@ -55,6 +55,7 @@ int main(void)
     Vector2Double scale = { INITIAL_SCALE, INITIAL_SCALE * screen_ratio };
     double resolution = INITIAL_RESOLUTION;
     int iterations = INITIAL_ITERATIONS;
+    bool debug = true;
 
     while (!WindowShouldClose()) {
         float dt = GetFrameTime();
@@ -107,17 +108,23 @@ int main(void)
             render_image(camera, scale);
         }
 
+        if (IsKeyPressed(KEY_B)) {
+            debug = !debug;
+        }
+
         BeginDrawing();
         ClearBackground(BLACK);
 
         render_frame(camera, scale, resolution, iterations);
 
-        int i = 0;
-        DrawText(TextFormat("FPS: %d", GetFPS()), 10, 10 + 20*(i++), FONT_SIZE, GREEN);
-        DrawText(TextFormat("Iterations: %i", iterations), 10, 10 + 20*(i++), FONT_SIZE, GREEN);
-        DrawText(TextFormat("Resolution: %f", resolution), 10, 10 + 20*(i++), FONT_SIZE, GREEN);
-        DrawText(TextFormat("Scale: (%f, %f)", scale.x, scale.y), 10, 10 + 20*(i++), FONT_SIZE, GREEN);
-        DrawText(TextFormat("Camera: (%f, %f)", camera.x, -camera.y), 10, 10 + 20*(i++), FONT_SIZE, GREEN);
+        if (debug) {
+            int i = 0;
+            DrawText(TextFormat("FPS: %d", GetFPS()), 10, 10 + 20*(i++), FONT_SIZE, GREEN);
+            DrawText(TextFormat("Iterations: %i", iterations), 10, 10 + 20*(i++), FONT_SIZE, GREEN);
+            DrawText(TextFormat("Resolution: %f", resolution), 10, 10 + 20*(i++), FONT_SIZE, GREEN);
+            DrawText(TextFormat("Scale: (%f, %f)", scale.x, scale.y), 10, 10 + 20*(i++), FONT_SIZE, GREEN);
+            DrawText(TextFormat("Camera: (%f, %f)", camera.x, -camera.y), 10, 10 + 20*(i++), FONT_SIZE, GREEN);
+        }
         if (g_rendering_image) {
             const char *text = "Rendering "OUTPUT_PATH" (Saving)";
             if (g_rendering_percent != -1) {
