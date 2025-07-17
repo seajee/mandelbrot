@@ -44,27 +44,35 @@ void render_image(Vector2Real camera, Vector2Real scale);
 void *render_thread(void *arg);
 void render(Vector2Real camera, Vector2Real scale, real resolution, int iterations, bool realtime);
 
+// Globals
 static bool g_rendering_image = false;
 static int g_rendering_percent = 0;
 
 int main(void)
 {
+    // Initialize window
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT);
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "mandelbrot");
     SetTargetFPS(60);
 
+    // Load shaders and their uniforms
     Shader shader = LoadShader("base.vert", "mandelbrot.frag");
     int u_resolution = GetShaderLocation(shader, "u_Resolution");
     int u_camera = GetShaderLocation(shader, "u_Camera");
     int u_scale = GetShaderLocation(shader, "u_Scale");
     int u_iterations = GetShaderLocation(shader, "u_Iterations");
 
+    // Screen resolution
     real screen_ratio = (real)WINDOW_HEIGHT / WINDOW_WIDTH;
     Vector2Real screen_size = { WINDOW_WIDTH, WINDOW_HEIGHT };
+
+    // Rendering variables
     Vector2Real camera = { -0.5, 0.0 };
     Vector2Real scale = { INITIAL_SCALE, INITIAL_SCALE * screen_ratio };
     real resolution = INITIAL_RESOLUTION;
     int iterations = INITIAL_ITERATIONS;
+
+    // Toggles
     bool debug = true;
     bool gpu = false;
 
@@ -77,6 +85,9 @@ int main(void)
         screen_ratio = (real)height / width;
         scale.y = scale.x * screen_ratio;
 
+        /* Input handling */
+
+        // Scale
         if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
             scale.x -= SPEED * scale.x * dt;
             scale.y -= SPEED * scale.y * dt;
@@ -88,6 +99,7 @@ int main(void)
         scale.x += -1.0 * GetMouseWheelMove() * SPEED * scale.x;
         scale.y += -1.0 * GetMouseWheelMove() * SPEED * scale.y;
 
+        // Position
         if (IsKeyDown(KEY_W)) {
             camera.y -= SPEED * scale.y * dt;
         }
@@ -101,6 +113,7 @@ int main(void)
             camera.x += SPEED * scale.x * dt;
         }
 
+        // Resolution
         if (IsKeyPressed(KEY_RIGHT_SHIFT)) {
             resolution *= 2.0;
             resolution = clamp(resolution, 0.0, 1.0);
@@ -109,6 +122,7 @@ int main(void)
             resolution /= 2.0;
         }
 
+        // Iterations
         if (IsKeyPressed(KEY_LEFT_SHIFT)) {
             iterations += 100;
         }
@@ -117,21 +131,25 @@ int main(void)
             if (iterations < 0) iterations = 0;
         }
 
+        // Image rendering
         if (IsKeyPressed(KEY_R) && !g_rendering_image) {
             render_image(camera, scale);
         }
 
+        // Toggles
         if (IsKeyPressed(KEY_B)) {
             debug = !debug;
         }
-
         if (IsKeyPressed(KEY_G)) {
             gpu = !gpu;
         }
 
+        /* Rendering */
+
         BeginDrawing();
         ClearBackground(BLACK);
 
+        // Draw Mandelbrot set
         if (gpu) {
             BeginShaderMode(shader);
             SetShaderValue(shader, u_resolution, &screen_size, SHADER_UNIFORM_VEC2);
@@ -144,6 +162,7 @@ int main(void)
             render_frame(camera, scale, resolution, iterations);
         }
 
+        // Debug info text
         if (debug) {
             int i = 0;
             DrawText(TextFormat("FPS: %d", GetFPS()), 10, 10 + 20*(i++), FONT_SIZE, GREEN);
@@ -166,6 +185,7 @@ int main(void)
         EndDrawing();
     }
 
+    // Cleanup
     UnloadShader(shader);
     CloseWindow();
 
