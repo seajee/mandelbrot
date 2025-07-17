@@ -74,7 +74,7 @@ int main(void)
 
     // Toggles
     bool debug = true;
-    bool gpu = false;
+    bool gpu = true;
 
     while (!WindowShouldClose()) {
         float dt = GetFrameTime();
