@@ -3,29 +3,25 @@
 ![preview_2.png](assets/preview_2.png)
 
 A [Mandelbrot set](https://en.wikipedia.org/wiki/Mandelbrot_set) renderer made
-with C and [raylib](https://www.raylib.com/)
-
-> [!NOTE]
-> Currently the program is single-threaded only, which makes the rendering very
-> slow. The plan is to implement a fragment shader to move the computation of the
-> pixels on the GPU.
+with C and [raylib](https://www.raylib.com/) with support for GPU acceleration.
 
 ## Usage
 
 Currently the keybinds are the following:
 
-| Key               | Action              |
-| ----------------- | ------------------- |
-| R                 | Render png image    |
-| B                 | Toggle debug info   |
-| Mouse left click  | Zoom in             |
-| Mouse right click | Zoom out            |
-| Mouse wheel up    | Zoom in             |
-| Mouse wheel down  | Zoom out            |
-| Left shift        | Increase iterations |
-| Left ctrl         | Decrease iterations |
-| Right shift       | Increase resolution |
-| Right ctrl        | Decrease resolution |
+| Key               | Action                  |
+| ----------------- | ----------------------- |
+| G                 | Toggle GPU Acceleration |
+| R                 | Render png image        |
+| B                 | Toggle debug info       |
+| Mouse left click  | Zoom in                 |
+| Mouse right click | Zoom out                |
+| Mouse wheel up    | Zoom in                 |
+| Mouse wheel down  | Zoom out                |
+| Left shift        | Increase iterations     |
+| Left ctrl         | Decrease iterations     |
+| Right shift       | Increase resolution     |
+| Right ctrl        | Decrease resolution     |
 
 ## Building
 

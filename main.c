@@ -23,23 +23,26 @@
 #define OUTPUT_ITERATIONS 4000
 #define OUTPUT_PATH "output.png"
 
-typedef struct {
-    double x;
-    double y;
-} Vector2Double;
+// TODO: Shaders need this to be a float and not double
+typedef float real;
 
 typedef struct {
-    Vector2Double camera;
-    Vector2Double scale;
+    real x;
+    real y;
+} Vector2Real;
+
+typedef struct {
+    Vector2Real camera;
+    Vector2Real scale;
 } RenderArgs;
 
-double map(double value, double inputStart, double inputEnd, double outputStart, double outputEnd);
-double normalize(double value, double start, double end);
-double clamp(double value, double min, double max);
-void render_frame(Vector2Double camera, Vector2Double scale, double resolution, int iterations);
-void render_image(Vector2Double camera, Vector2Double scale);
+real map(real value, real inputStart, real inputEnd, real outputStart, real outputEnd);
+real normalize(real value, real start, real end);
+real clamp(real value, real min, real max);
+void render_frame(Vector2Real camera, Vector2Real scale, real resolution, int iterations);
+void render_image(Vector2Real camera, Vector2Real scale);
 void *render_thread(void *arg);
-void render(Vector2Double camera, Vector2Double scale, double resolution, int iterations, bool realtime);
+void render(Vector2Real camera, Vector2Real scale, real resolution, int iterations, bool realtime);
 
 static bool g_rendering_image = false;
 static int g_rendering_percent = 0;
@@ -50,18 +53,28 @@ int main(void)
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "mandelbrot");
     SetTargetFPS(60);
 
-    double screen_ratio = (double)WINDOW_HEIGHT / WINDOW_WIDTH;
-    Vector2Double camera = { -0.5, 0.0 };
-    Vector2Double scale = { INITIAL_SCALE, INITIAL_SCALE * screen_ratio };
-    double resolution = INITIAL_RESOLUTION;
+    Shader shader = LoadShader("base.vert", "mandelbrot.frag");
+    int u_resolution = GetShaderLocation(shader, "u_Resolution");
+    int u_camera = GetShaderLocation(shader, "u_Camera");
+    int u_scale = GetShaderLocation(shader, "u_Scale");
+    int u_iterations = GetShaderLocation(shader, "u_Iterations");
+
+    real screen_ratio = (real)WINDOW_HEIGHT / WINDOW_WIDTH;
+    Vector2Real screen_size = { WINDOW_WIDTH, WINDOW_HEIGHT };
+    Vector2Real camera = { -0.5, 0.0 };
+    Vector2Real scale = { INITIAL_SCALE, INITIAL_SCALE * screen_ratio };
+    real resolution = INITIAL_RESOLUTION;
     int iterations = INITIAL_ITERATIONS;
     bool debug = true;
+    bool gpu = false;
 
     while (!WindowShouldClose()) {
         float dt = GetFrameTime();
         int width = GetScreenWidth();
         int height = GetScreenHeight();
-        screen_ratio = (double)height / width;
+        screen_size.x = width;
+        screen_size.y = height;
+        screen_ratio = (real)height / width;
         scale.y = scale.x * screen_ratio;
 
         if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
@@ -112,18 +125,33 @@ int main(void)
             debug = !debug;
         }
 
+        if (IsKeyPressed(KEY_G)) {
+            gpu = !gpu;
+        }
+
         BeginDrawing();
         ClearBackground(BLACK);
 
-        render_frame(camera, scale, resolution, iterations);
+        if (gpu) {
+            BeginShaderMode(shader);
+            SetShaderValue(shader, u_resolution, &screen_size, SHADER_UNIFORM_VEC2);
+            SetShaderValue(shader, u_camera, &camera, SHADER_UNIFORM_VEC2);
+            SetShaderValue(shader, u_scale, &scale, SHADER_UNIFORM_VEC2);
+            SetShaderValue(shader, u_iterations, &iterations, SHADER_UNIFORM_INT);
+            DrawRectangle(0, 0, width, height, WHITE);
+            EndShaderMode();
+        } else {
+            render_frame(camera, scale, resolution, iterations);
+        }
 
         if (debug) {
             int i = 0;
             DrawText(TextFormat("FPS: %d", GetFPS()), 10, 10 + 20*(i++), FONT_SIZE, GREEN);
             DrawText(TextFormat("Iterations: %i", iterations), 10, 10 + 20*(i++), FONT_SIZE, GREEN);
-            DrawText(TextFormat("Resolution: %f", resolution), 10, 10 + 20*(i++), FONT_SIZE, GREEN);
+            DrawText(TextFormat("Resolution: %f", (gpu ? 1.0 : resolution)), 10, 10 + 20*(i++), FONT_SIZE, GREEN);
             DrawText(TextFormat("Scale: (%f, %f)", scale.x, scale.y), 10, 10 + 20*(i++), FONT_SIZE, GREEN);
             DrawText(TextFormat("Camera: (%f, %f)", camera.x, -camera.y), 10, 10 + 20*(i++), FONT_SIZE, GREEN);
+            DrawText(TextFormat("Rendering mode: %s", (gpu ? "GPU" : "CPU")), 10, 10 + 20*(i++), FONT_SIZE, GREEN);
         }
         if (g_rendering_image) {
             const char *text = "Rendering "OUTPUT_PATH" (Saving)";
@@ -138,40 +166,41 @@ int main(void)
         EndDrawing();
     }
 
+    UnloadShader(shader);
     CloseWindow();
 
     return EXIT_SUCCESS;
 }
 
-double map(double value, double inputStart, double inputEnd, double outputStart, double outputEnd)
+real map(real value, real inputStart, real inputEnd, real outputStart, real outputEnd)
 {
-    double result = (value - inputStart)/(inputEnd - inputStart)*(outputEnd - outputStart) + outputStart;
+    real result = (value - inputStart)/(inputEnd - inputStart)*(outputEnd - outputStart) + outputStart;
 
     return result;
 }
 
-double normalize(double value, double start, double end)
+real normalize(real value, real start, real end)
 {
-    double result = (value - start)/(end - start);
+    real result = (value - start)/(end - start);
 
     return result;
 }
 
-double clamp(double value, double min, double max)
+real clamp(real value, real min, real max)
 {
-    double result = (value < min)? min : value;
+    real result = (value < min)? min : value;
 
     if (result > max) result = max;
 
     return result;
 }
 
-void render_frame(Vector2Double camera, Vector2Double scale, double resolution, int iterations)
+void render_frame(Vector2Real camera, Vector2Real scale, real resolution, int iterations)
 {
     render(camera, scale, resolution, iterations, true);
 }
 
-void render_image(Vector2Double camera, Vector2Double scale)
+void render_image(Vector2Real camera, Vector2Real scale)
 {
     RenderArgs *args = malloc(sizeof(*args));
     assert(args != NULL);
@@ -194,7 +223,7 @@ void *render_thread(void *arg)
     return NULL;
 }
 
-void render(Vector2Double camera, Vector2Double scale, double resolution, int iterations, bool realtime)
+void render(Vector2Real camera, Vector2Real scale, real resolution, int iterations, bool realtime)
 {
     int width;
     int height;
@@ -211,7 +240,7 @@ void render(Vector2Double camera, Vector2Double scale, double resolution, int it
     } else {
         clock_gettime(CLOCK_MONOTONIC, &start);
 
-        double screen_ratio = (double)GetScreenHeight() / GetScreenWidth();
+        real screen_ratio = (real)GetScreenHeight() / GetScreenWidth();
         width = OUTPUT_WIDTH;
         height = width * screen_ratio;
 
@@ -224,19 +253,19 @@ void render(Vector2Double camera, Vector2Double scale, double resolution, int it
 
     for (int y = 0; y < height; y += pixel_height) {
         if (!realtime) {
-            g_rendering_percent = (double)y / height * 100.0;
+            g_rendering_percent = (real)y / height * 100.0;
         }
 
         for (int x = 0; x < width; x += pixel_width) {
-            double z_real = map(x, 0, width,  camera.x - scale.x, camera.x + scale.x);
-            double z_imag = map(y, 0, height, camera.y - scale.y, camera.y + scale.y);
-            double c_real = z_real;
-            double c_imag = z_imag;
+            real z_real = map(x, 0, width,  camera.x - scale.x, camera.x + scale.x);
+            real z_imag = map(y, 0, height, camera.y - scale.y, camera.y + scale.y);
+            real c_real = z_real;
+            real c_imag = z_imag;
 
             int i;
             for (i = 0; i < iterations; ++i) {
-                double new_z_real = z_real*z_real - z_imag*z_imag;
-                double new_z_imag = 2*z_real*z_imag;
+                real new_z_real = z_real*z_real - z_imag*z_imag;
+                real new_z_imag = 2*z_real*z_imag;
 
                 z_real = new_z_real + c_real;
                 z_imag = new_z_imag + c_imag;
@@ -248,8 +277,8 @@ void render(Vector2Double camera, Vector2Double scale, double resolution, int it
 
             Color color = BLACK;
             if (i != iterations) {
-                double norm = normalize(i, 0.0, iterations);
-                double bright = sqrt(norm) * 255;
+                real norm = normalize(i, 0.0, iterations);
+                real bright = sqrt(norm) * 255;
                 color = (Color){ bright, bright, bright, 255 };
             }
 
